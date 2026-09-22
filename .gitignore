@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.log
+client/dist/
+
+# Contains a stale plaintext MySQL password; keep it out of git history.
+scripts/reset-mysql-password.ps1
