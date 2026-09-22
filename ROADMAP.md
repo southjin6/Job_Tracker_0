@@ -72,14 +72,13 @@ Errors are JSON: `{ error: { message, code } }` — 400 validation, 404 missing,
 ```bash
 # 1. Database (once)
 mysql -u root -p < db/schema.sql
-mysql -u root -p < db/seed.sql        # optional demo data
+mysql -u root -p < db/seed.sql        # optional demo data — one-shot, see README
 
-# 2. API
-cd server && npm install && cp .env.example .env   # fill in DB password
-npm run dev                                        # http://127.0.0.1:4000/api
-
-# 3. Frontend
-cd client && npm install && npm run dev            # http://localhost:5173
+# 2. From the project root
+npm install            # the runner
+npm run setup          # deps for server/ and client/
+cp server/.env.example server/.env    # fill in DB_PASSWORD
+npm run dev            # [api] http://127.0.0.1:4000/api  +  [web] http://localhost:5173
 ```
 
 ## Frontend plan (phases 7–12)

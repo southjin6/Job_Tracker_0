@@ -1,0 +1,22 @@
+{
+  "name": "job-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal ATS — Vite React client + Express/MySQL API. Install and run both from here.",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "setup": "npm --prefix server install && npm --prefix client install",
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "start": "npm --prefix server run start",
+    "build": "npm --prefix client run build",
+    "preview": "npm --prefix client run preview",
+    "lint": "npm --prefix client run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}

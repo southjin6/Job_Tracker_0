@@ -21,17 +21,20 @@ creating it there — `ROADMAP.md` marks it as open.)
 
 ```
 Job_Tracker/
+├── package.json root runner — install both apps and start them together
 ├── db/          schema.sql (source of truth), seed.sql (demo data — see warning below)
 ├── server/      Express API — routes → controllers → services → models → config/db.js
 ├── client/      Vite + React app; talks to the API same-origin through the /api proxy
 └── scripts/     local utilities — nothing tracked here (see .gitignore)
 ```
 
-There is no root `package.json` — install and run `server/` and `client/` separately.
+The root package holds no app code: `server/` and `client/` keep their own manifests and dependency
+trees, and the root just drives them with `npm --prefix`. Its only dependency is `concurrently`
+(dev-only) so `npm run dev` can start both in one terminal.
 
 ## Getting it running
 
-Prerequisites: Node.js `^20.19 || >=22.12` (Vite 8's floor; developed on 24.x) and MySQL 8 running
+Prerequisites: Node.js 20.19+ or 22.12+ (Vite 8's floor; developed on 24.x) and MySQL 8 running
 locally.
 
 ```bash
@@ -41,13 +44,13 @@ mysql -u root -p < db/schema.sql
 # 2. (Optional) demo rows — read the warning below first
 mysql -u root -p job_tracker < db/seed.sql
 
-# 3. Configure the API
-cd server && cp .env.example .env     # then put your MySQL password in it
-npm install
-npm run dev                           # API on http://127.0.0.1:4000/api
+# 3. From the project root
+npm install            # the runner itself (one dev-only dependency)
+npm run setup          # installs server/ and client/ dependencies
+cp server/.env.example server/.env   # then put your MySQL password in it
 
-# 4. In a second terminal
-cd client && npm install && npm run dev
+# 4. Run both (API on :4000, Vite on :5173) — Ctrl+C stops the pair together
+npm run dev
 ```
 
 Open **http://localhost:5173**. Sanity-check the API with `curl http://localhost:4000/api/health`
@@ -64,14 +67,19 @@ fails and aborts the file mid-way; if you are unlucky, later statements attach d
 
 ## npm scripts
 
-| Where | Script | Does |
-|---|---|---|
-| `server/` | `npm run dev` | `nodemon src/server.js` |
-| `server/` | `npm start` | `node src/server.js` |
-| `client/` | `npm run dev` | Vite dev server, proxying `/api` → `127.0.0.1:4000` |
-| `client/` | `npm run build` | Production bundle to `client/dist/` |
-| `client/` | `npm run lint` | `oxlint` |
-| `client/` | `npm run preview` | Serve the built bundle |
+Run these from the project root:
+
+| Script | Does |
+|---|---|
+| `npm run setup` | Installs dependencies inside `server/` **and** `client/` |
+| `npm run dev` | Starts the API (nodemon) and Vite together, prefixed `[api]` / `[web]` |
+| `npm run dev:server` / `npm run dev:client` | One of them, if you only need one |
+| `npm run start` | API without auto-reload |
+| `npm run build` / `npm run preview` | Production bundle to `client/dist/`, then serve it |
+| `npm run lint` | `oxlint` over the client |
+
+Each one is a thin `npm --prefix` wrapper, so the same scripts still work if you `cd server` or
+`cd client` and run them there (`dev`, `start`, `build`, `lint`, `preview`).
 
 ## Data model
 
@@ -194,7 +202,8 @@ company quick-add in the application form, drag-and-drop kanban, and a backup sc
 
 | Symptom | Cause / fix |
 |---|---|
-| Blank page at `:5173`, and `/api/...` returns HTML | A stale Vite dev server started before `vite.config.js` had the proxy. Restart `npm run dev` in `client/`. |
+| Blank page at `:5173`, and `/api/...` returns HTML | A stale Vite dev server started before `vite.config.js` had the proxy. Restart `npm run dev`. |
+| `[web]` comes up but `[api]` exits with "Port 4000 is already in use" | A dev server from another terminal still owns it — stop that one, or set `PORT` in `server/.env` (and the proxy target in `client/vite.config.js`) to something else. |
 | `curl 127.0.0.1:5173` refuses, but the browser works | Vite binds `[::1]`; use `http://localhost:5173`. |
 | API exits with "Port 4000 is already in use" | Another API instance is running, or set `PORT` in `server/.env`. |
 | "Missing required env vars: …" | `.env` is missing, or `npm run dev` was run from a directory other than `server/` (`dotenv` resolves relative to the working directory). |
