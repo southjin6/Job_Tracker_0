@@ -1,5 +1,8 @@
 node_modules/
-.env
+# Ignore .env and all variants (.env.local, .env.production, ...) at any depth,
+# but keep the placeholder template tracked.
+.env*
+!.env.example
 *.log
 client/dist/
 
