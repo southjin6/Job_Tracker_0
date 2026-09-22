@@ -58,7 +58,10 @@ export function useApplication(id) {
   });
 }
 
-const APP_KEYS = [['applications'], ['dashboard']];
+// Every application change moves company application_count and the company detail list,
+// so 'companies' belongs in the shared set rather than in each call site.
+const APP_KEYS = [['applications'], ['dashboard'], ['companies']];
+const FOLLOW_UP_KEYS = [...APP_KEYS, ['follow-ups']];
 
 export function useCreateApplication() {
   const qc = useQueryClient();
@@ -103,11 +106,27 @@ export function useUpdateAssessment() {
   });
 }
 
+export function useCreateAssessment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ appId, ...data }) => api.post(`/applications/${appId}/assessments`, data).then((r) => r.data),
+    onSuccess: (_d, vars) => invalidate(qc, [...APP_KEYS, [['applications', 'detail', vars.appId]]]),
+  });
+}
+
+export function useCreateCommunication() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ appId, ...data }) => api.post(`/applications/${appId}/communications`, data).then((r) => r.data),
+    onSuccess: (_d, vars) => invalidate(qc, [...FOLLOW_UP_KEYS, [['applications', 'detail', vars.appId]]]),
+  });
+}
+
 export function useUpdateCommunication() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }) => api.put(`/communications/${id}`, data).then((r) => r.data),
-    onSuccess: (c) => invalidate(qc, [...APP_KEYS, [['applications', 'detail', c.application_id]]]),
+    onSuccess: (c) => invalidate(qc, [...FOLLOW_UP_KEYS, [['applications', 'detail', c.application_id]]]),
   });
 }
 
@@ -123,7 +142,13 @@ export function useDeleteApplication() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id) => api.delete(`/applications/${id}`),
-    onSuccess: () => invalidate(qc, [...APP_KEYS, ['companies']]),
+    onSuccess: (_d, id) => {
+      // The deleted row's detail query is still mounted at this moment: dropping it and
+      // excluding detail keys from the invalidation stops a refetch that would 404 and toast.
+      qc.removeQueries({ queryKey: ['applications', 'detail', String(id)] });
+      qc.invalidateQueries({ queryKey: ['applications'], predicate: (q) => q.queryKey[1] !== 'detail' });
+      invalidate(qc, [['dashboard'], ['companies'], ['follow-ups']]);
+    },
   });
 }
 
@@ -132,6 +157,6 @@ export function useFollowUpAction() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, action, due_at }) => api.patch(`/communications/${id}/follow-up`, { action, due_at }).then((r) => r.data),
-    onSuccess: () => invalidate(qc, [...APP_KEYS, ['follow-ups']]),
+    onSuccess: () => invalidate(qc, FOLLOW_UP_KEYS),
   });
 }

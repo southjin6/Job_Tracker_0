@@ -4,7 +4,7 @@ import * as submissionsModel from '../models/submissions.model.js';
 import * as assessmentsModel from '../models/assessments.model.js';
 import * as communicationsModel from '../models/communications.model.js';
 import * as applicationsService from '../services/applications.service.js';
-import { assertBranchOfCompany } from '../services/references.js';
+import { assertBranchOfCompany, assertNoForeignChildContacts } from '../services/references.js';
 import { NotFoundError } from '../utils/httpErrors.js';
 import { pick } from '../models/helpers.js';
 import { FIELDS } from '../models/applications.model.js';
@@ -36,8 +36,12 @@ export async function update(req, res) {
   if (!existing) throw new NotFoundError('Application');
   // status changes must go through PATCH /status (transactional + history)
   const data = pick(req.body, FIELDS);
-  if (data.branch_id) {
-    await assertBranchOfCompany(data.branch_id, data.company_id ?? existing.company_id);
+  const targetCompany = data.company_id ?? existing.company_id;
+  if (data.company_id && data.company_id !== existing.company_id) {
+    await assertNoForeignChildContacts(existing.id, data.company_id);
+  }
+  if ('branch_id' in data) {
+    if (data.branch_id) await assertBranchOfCompany(data.branch_id, targetCompany);
   } else if (data.company_id && existing.branch_id) {
     await assertBranchOfCompany(existing.branch_id, data.company_id);
   }

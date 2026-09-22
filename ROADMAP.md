@@ -11,7 +11,7 @@ Job_Tracker/
 ├── db/          schema.sql (source of truth), seed.sql (demo data)
 ├── server/      Express API — routes → controllers → services → models → config/db.js
 ├── client/      Vite React app
-└── scripts/     dev utilities (MySQL password reset, backups)
+└── scripts/     dev utilities (MySQL password reset — gitignored; backups still TODO)
 ```
 
 ## Data model (8 tables)
@@ -61,11 +61,11 @@ Errors are JSON: `{ error: { message, code } }` — 400 validation, 404 missing,
 | 5 | Assessments + communications + follow-ups | Past-due follow-up appears in `/follow-ups/due`; complete → gone | done |
 | 6 | Dashboard API | Stats match direct SQL | done |
 | 7 | Frontend shell (router, react-query, axios, Tailwind) | Navigation + API calls in network tab | done |
-| 8 | Companies UI (list/detail, branch+contact forms) | Create company/branch/contact from UI | partial — list/detail/quick-add done, branch+contact forms pending |
-| 9 | Applications UI + **CompanyCombobox** quick-add | Blank DB → company + application + submission in <30s | pending |
-| 10 | Pipeline kanban (drag = `PATCH /status`, optimistic) | Drag → refresh → persisted; history shows move | pending |
-| 11 | Comms/follow-ups UI + nav badge | Snooze pushes date; badge matches | pending |
-| 12 | Dashboard UI + polish + mysqldump backup script | Dump restores into fresh schema | pending |
+| 8 | Companies UI (list/detail, branch+contact forms) | Create company/branch/contact from UI | partial — company list/create/detail + branch & contact **display** done; branch/contact add/edit UI missing (API is ready) |
+| 9 | Applications UI + **CompanyCombobox** quick-add | Blank DB → company + application + submission in <30s | partial — list, filters, new-application form with submission, detail CRUD done; company is a plain `<select>`, no inline quick-add |
+| 10 | Pipeline kanban (drag = `PATCH /status`, optimistic) | Drag → refresh → persisted; history shows move | pending — columns render, no drag handlers |
+| 11 | Comms/follow-ups UI + nav badge | Snooze pushes date; badge matches | done — badge + complete/snooze on `/follow-ups`, add-assessment and log-communication forms on the application detail page |
+| 12 | Dashboard UI + polish + mysqldump backup script | Dump restores into fresh schema | partial — dashboard stats + follow-ups view done; **no backup script exists** |
 
 ## Running locally
 

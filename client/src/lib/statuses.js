@@ -76,6 +76,21 @@ export function formatDate(value) {
   return String(value).slice(0, 10);
 }
 
+// toISOString() is UTC; the DB and this user's day are local (UTC+8), so a pre-fill
+// built from it reads as yesterday before 08:00 local.
+export function todayLocalDate() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// Same local-time rule for datetime-local inputs ("2026-09-22T18:40").
+export function nowLocalDateTime() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${todayLocalDate()}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function formatDateTime(value) {
   if (!value) return '—';
   return String(value).slice(0, 16).replace('T', ' ');

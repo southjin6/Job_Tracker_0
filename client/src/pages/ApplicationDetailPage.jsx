@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { useApplication, useChangeStatus, useDeleteApplication, useUpdateApplication, useUpdateSubmission, useUpdateAssessment, useUpdateCommunication } from '../api/hooks.js'
-import { STATUSES, STATUS_LABELS, STATUS_COLORS, SUBMISSION_CHANNELS, ROLE_LABELS, PRIORITY_LABELS, COMM_METHODS, ASSESSMENT_TYPES, ASSESSMENT_STATUSES, formatDate, formatDateTime, confirmDeleteApplication, toInputDateTime, fromInputDateTime } from '../lib/statuses.js'
+import { useApplication, useChangeStatus, useDeleteApplication, useUpdateApplication, useUpdateSubmission, useUpdateAssessment, useUpdateCommunication, useCreateAssessment, useCreateCommunication } from '../api/hooks.js'
+import { STATUSES, STATUS_LABELS, STATUS_COLORS, SUBMISSION_CHANNELS, ROLE_LABELS, PRIORITY_LABELS, COMM_METHODS, ASSESSMENT_TYPES, ASSESSMENT_STATUSES, formatDate, formatDateTime, confirmDeleteApplication, toInputDateTime, fromInputDateTime, nowLocalDateTime } from '../lib/statuses.js'
 import { useState } from 'react'
 
 function SubmissionItem({ submission }) {
@@ -134,6 +134,122 @@ function Field({ label, children, className = '' }) {
 
 const inputCls = 'w-full rounded border border-slate-300 p-1 text-sm text-slate-800'
 const emptyToNull = (v) => (v === '' ? null : v)
+
+function AddForm({ label, onOpen, open, children }) {
+  return (
+    <div className="mt-2 border-t pt-2">
+      {open ? children : (
+        <button onClick={onOpen} className="rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100">{label}</button>
+      )}
+    </div>
+  )
+}
+
+function NewAssessmentForm({ appId, onDone }) {
+  const create = useCreateAssessment()
+  const [draft, setDraft] = useState({ type: 'technical', name: '', status: 'scheduled', scheduled_at: '', location: '' })
+  const set = (k) => (e) => setDraft({ ...draft, [k]: e.target.value })
+
+  const save = async () => {
+    try {
+      await create.mutateAsync({
+        appId,
+        type: draft.type,
+        name: emptyToNull(draft.name.trim()),
+        status: draft.status,
+        scheduled_at: fromInputDateTime(draft.scheduled_at),
+        location: emptyToNull(draft.location.trim()),
+      })
+      onDone()
+    } catch {
+      // error toast already shown; keep the draft
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <Field label="Type">
+        <select value={draft.type} onChange={set('type')} className={inputCls}>
+          {ASSESSMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
+      </Field>
+      <Field label="Name">
+        <input value={draft.name} onChange={set('name')} placeholder="e.g. BUPLAS retest" className={inputCls} />
+      </Field>
+      <Field label="Status">
+        <select value={draft.status} onChange={set('status')} className={inputCls}>
+          {ASSESSMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </Field>
+      <Field label="Scheduled">
+        <input type="datetime-local" value={draft.scheduled_at} onChange={set('scheduled_at')} className={inputCls} />
+      </Field>
+      <Field label="Location" className="col-span-2 lg:col-span-3">
+        <input value={draft.location} onChange={set('location')} placeholder="Site / meeting link (optional)" className={inputCls} />
+      </Field>
+      <div className="flex items-end">
+        <EditActions onSave={save} onCancel={onDone} saving={create.isPending} />
+      </div>
+    </div>
+  )
+}
+
+function NewCommunicationForm({ appId, onDone }) {
+  const create = useCreateCommunication()
+  const [draft, setDraft] = useState({
+    method: 'email', direction: 'outbound', summary: '', occurred_at: nowLocalDateTime(), follow_up_due_at: '',
+  })
+  const set = (k) => (e) => setDraft({ ...draft, [k]: e.target.value })
+
+  const save = async () => {
+    const summary = draft.summary.trim()
+    if (!summary) {
+      setDraft({ ...draft, summary: '' })
+      return
+    }
+    try {
+      await create.mutateAsync({
+        appId,
+        method: draft.method,
+        direction: draft.direction,
+        summary,
+        occurred_at: fromInputDateTime(draft.occurred_at),
+        follow_up_due_at: fromInputDateTime(draft.follow_up_due_at),
+      })
+      onDone()
+    } catch {
+      // error toast already shown; keep the draft
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+      <Field label="Method">
+        <select value={draft.method} onChange={set('method')} className={inputCls}>
+          {COMM_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+      </Field>
+      <Field label="Direction">
+        <select value={draft.direction} onChange={set('direction')} className={inputCls}>
+          <option value="outbound">Outbound</option>
+          <option value="inbound">Inbound</option>
+        </select>
+      </Field>
+      <Field label="Occurred">
+        <input type="datetime-local" value={draft.occurred_at} onChange={set('occurred_at')} className={inputCls} />
+      </Field>
+      <Field label="Summary" className="col-span-2">
+        <input value={draft.summary} onChange={set('summary')} placeholder="What was said / sent" className={inputCls} />
+      </Field>
+      <Field label="Follow-up due (empty = none)">
+        <input type="datetime-local" value={draft.follow_up_due_at} onChange={set('follow_up_due_at')} className={inputCls} />
+      </Field>
+      <div className="flex items-end lg:col-start-3 lg:justify-end">
+        <EditActions onSave={save} onCancel={onDone} saving={create.isPending} />
+      </div>
+    </div>
+  )
+}
 
 function AssessmentItem({ assessment }) {
   const [editing, setEditing] = useState(false)
@@ -306,6 +422,8 @@ export default function ApplicationDetailPage() {
   const { data: app, isLoading } = useApplication(id)
   const changeStatus = useChangeStatus()
   const deleteApp = useDeleteApplication()
+  const [addingAssessment, setAddingAssessment] = useState(false)
+  const [addingCommunication, setAddingCommunication] = useState(false)
 
   if (isLoading) return <p className="text-slate-500">Loading…</p>
   if (!app) return <p className="text-red-600">Application not found.</p>
@@ -355,19 +473,27 @@ export default function ApplicationDetailPage() {
       </Section>
 
       <Section title={`Assessments (${app.assessments.length})`}>
-        {app.assessments.length === 0 ? <p className="text-sm text-slate-400">None logged.</p> : (
+        {app.assessments.length === 0 && !addingAssessment && <p className="text-sm text-slate-400">None logged.</p>}
+        {app.assessments.length > 0 && (
           <ul className="divide-y text-sm">
             {app.assessments.map((a) => <AssessmentItem key={a.id} assessment={a} />)}
           </ul>
         )}
+        <AddForm label="+ Add assessment" open={addingAssessment} onOpen={() => setAddingAssessment(true)}>
+          <NewAssessmentForm appId={app.id} onDone={() => setAddingAssessment(false)} />
+        </AddForm>
       </Section>
 
       <Section title={`Communications (${app.communications.length})`}>
-        {app.communications.length === 0 ? <p className="text-sm text-slate-400">None logged.</p> : (
+        {app.communications.length === 0 && !addingCommunication && <p className="text-sm text-slate-400">None logged.</p>}
+        {app.communications.length > 0 && (
           <ul className="divide-y text-sm">
             {app.communications.map((c) => <CommunicationItem key={c.id} communication={c} />)}
           </ul>
         )}
+        <AddForm label="+ Log communication" open={addingCommunication} onOpen={() => setAddingCommunication(true)}>
+          <NewCommunicationForm appId={app.id} onDone={() => setAddingCommunication(false)} />
+        </AddForm>
       </Section>
 
       <Section title="Status history">

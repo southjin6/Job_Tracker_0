@@ -27,11 +27,18 @@ export async function update(req, res) {
 export async function remove(req, res) {
   const existing = await branchesModel.findById(req.params.id);
   if (!existing) throw new NotFoundError('Branch');
-  // FK is ON DELETE SET NULL: without this guard, deleting a branch silently blanks
-  // applications.branch_id instead of warning that live records depend on it.
-  const refs = await queryOne('SELECT COUNT(*) AS n FROM applications WHERE branch_id = ?', [existing.id]);
-  if (Number(refs.n) > 0) {
-    throw new ConflictError(`${refs.n} application(s) still use this branch — reassign or delete them first.`);
+  // Both FKs are ON DELETE SET NULL: without this guard, deleting a branch silently blanks
+  // applications.branch_id / contact_persons.branch_id instead of warning dependents exist.
+  const refs = await queryOne(
+    `SELECT (SELECT COUNT(*) FROM applications WHERE branch_id = ?) AS apps,
+            (SELECT COUNT(*) FROM contact_persons WHERE branch_id = ?) AS contacts`,
+    [existing.id, existing.id]
+  );
+  const parts = [];
+  if (Number(refs.apps) > 0) parts.push(`${refs.apps} application(s)`);
+  if (Number(refs.contacts) > 0) parts.push(`${refs.contacts} contact(s)`);
+  if (parts.length) {
+    throw new ConflictError(`${parts.join(' and ')} still use this branch — reassign or delete them first.`);
   }
   await branchesModel.remove(req.params.id);
   res.status(204).end();

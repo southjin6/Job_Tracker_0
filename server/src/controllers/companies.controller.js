@@ -23,7 +23,7 @@ export async function getById(req, res) {
     contactsModel.listByCompany(company.id),
     query(
       `SELECT id, job_title, status, applied_at, priority
-       FROM applications WHERE company_id = ? ORDER BY applied_at DESC`,
+       FROM applications WHERE company_id = ? ORDER BY applied_at DESC LIMIT 200`,
       [company.id]
     ),
   ]);

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApplications, useCompanies, useCreateApplication, useCreateSubmission, useDeleteApplication } from '../api/hooks.js'
-import { STATUSES, STATUS_LABELS, STATUS_COLORS, SUBMISSION_CHANNELS, formatDate, confirmDeleteApplication } from '../lib/statuses.js'
+import { STATUSES, STATUS_LABELS, STATUS_COLORS, SUBMISSION_CHANNELS, formatDate, todayLocalDate, confirmDeleteApplication } from '../lib/statuses.js'
 
 function NewApplicationForm({ onClose }) {
   const { data: companies = [] } = useCompanies()
@@ -11,7 +11,7 @@ function NewApplicationForm({ onClose }) {
     company_id: '',
     job_title: '',
     role_category: 'it',
-    applied_at: new Date().toISOString().slice(0, 10),
+    applied_at: todayLocalDate(),
     source: '',
     notes: '',
     channel: 'email',

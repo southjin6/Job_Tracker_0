@@ -15,8 +15,11 @@ const optionalEmpty = (schema) => z.preprocess(emptyToUndefined, schema.optional
 
 // Clients send naive local "2026-09-24T09:00[:00]"; normalize to MySQL DATETIME
 // text so trailing Z/offsets/fractional seconds can't reach SQL as invalid values.
-const toMysqlDateTime = (v) =>
-  v.replace('T', ' ').replace(/[Zz]$/, '').replace(/[+-]\d{2}:\d{2}$/, '').replace(/\.\d+$/, '').slice(0, 19);
+// Seconds are padded so a minute-precision edit compares equal to the stored value.
+const toMysqlDateTime = (v) => {
+  const base = v.replace('T', ' ').replace(/[Zz]$/, '').replace(/[+-]\d{2}:\d{2}$/, '').replace(/\.\d+$/, '').slice(0, 19);
+  return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(base) ? `${base}:00` : base;
+};
 const dateTimeLocal = z.string().datetime({ local: true }).transform(toMysqlDateTime);
 
 const isoDate = z
@@ -59,7 +62,7 @@ export const contactCreate = z.object({
   branch_id: z.number().int().positive().nullish(),
   full_name: z.string().trim().min(1).max(150),
   job_title: z.string().trim().max(150).nullish(),
-  email: z.string().trim().max(255).nullish(),
+  email: z.string().trim().max(255).email().nullish(),
   phone: z.string().trim().max(50).nullish(),
   preferred_channel: z.enum(['email', 'call', 'sms', 'chat']).nullish(),
   is_primary: z.union([z.boolean(), z.number().int().min(0).max(1)]).default(false),

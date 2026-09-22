@@ -46,7 +46,8 @@ export async function listDueFollowUps() {
      JOIN applications a ON a.id = cm.application_id
      JOIN companies c ON c.id = a.company_id
      WHERE cm.follow_up_due_at <= NOW() AND cm.follow_up_completed_at IS NULL
-     ORDER BY cm.follow_up_due_at ASC`
+     ORDER BY cm.follow_up_due_at ASC
+     LIMIT 200`
   );
 }
 
